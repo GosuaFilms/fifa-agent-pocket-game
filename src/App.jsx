@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     CheckCircle2, XCircle, RotateCcw, Trophy, Brain,
     BookOpen, Heart, Flame, Timer, Target, Save,
-    BarChart3, Layers3, Shield, ChevronRight, Star,
+    BarChart3, Layers3, Shield, ChevronRight, Star, LogOut,
 } from "lucide-react";
+import { supabase } from "./supabase";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 const QUESTION_BANK = [
@@ -94,7 +95,7 @@ const QUESTION_BANK = [
     { id: 88, type: "multi", category: "Circulares", question: "La Circular 1887 introdujo enmiendas en el RETJ. ¿Cuáles?", options: ["Derechos de jugadoras y entrenadoras (maternidad, adopción)", "Extensión del Anexo 7 (suspensiones por guerra en Ucrania)", "Declaración en TMS de modificaciones a condiciones de pago (Anexo 3)", "Creación de la Cámara de Agentes"], correct: [0, 1, 2], explanation: "La Circular 1887 (mayo 2024) aborda tres áreas: derechos de jugadoras/entrenadoras, extensión del Anexo 7 (Ucrania) y la obligación de declarar en TMS los cambios en condiciones de pago." },
     { id: 89, type: "single", category: "Circulares", question: "¿Cuánto es la compensación por formación para un club UEFA de categoría I por año de formación?", options: ["60.000 EUR", "90.000 EUR", "50.000 USD", "120.000 EUR"], correct: [1], explanation: "Los clubes UEFA de categoría I reciben 90.000 EUR por año de formación. Cat. II: 60.000 EUR; III: 30.000 EUR; IV: 10.000 EUR (Circular 1936)." },
     { id: 90, type: "single", category: "Circulares", question: "¿Antes de qué fecha deben las federaciones registrar sus categorías de clubes y períodos de inscripción en el TMS?", options: ["30 junio", "31 julio", "30 septiembre", "31 diciembre"], correct: [1], explanation: "Las federaciones deben registrar las categorizaciones y los períodos de inscripción en el TMS antes del 31 de julio de cada año (Circular 1936)." },
-    // Estrategia / Examen
+    // Estrategia
     { id: 93, type: "single", category: "Estrategia", question: "¿Cuántas preguntas tiene el examen de agente FIFA?", options: ["15", "20", "25", "30"], correct: [1], explanation: "El examen consta de 20 preguntas. Para aprobar se necesitan al menos 15 correctas (75%)." },
     { id: 94, type: "single", category: "Estrategia", question: "¿Cuánto tiempo se dispone para realizar el examen de agente FIFA?", options: ["30 minutos", "45 minutos", "60 minutos", "90 minutos"], correct: [2], explanation: "El examen tiene una duración de 60 minutos (3 minutos por pregunta de media)." },
     { id: 95, type: "single", category: "Estrategia", question: "¿Cuál es la puntuación mínima para aprobar el examen de agente FIFA?", options: ["60%", "70%", "75%", "80%"], correct: [2], explanation: "Se necesita un mínimo del 75% (15 de 20 preguntas correctas) para superar el examen." },
@@ -158,9 +159,76 @@ function arraysEqual(a, b) {
     return [...a].sort((m,n)=>m-n).every((v,i) => v === [...b].sort((m,n)=>m-n)[i]);
 }
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
-function loadProgress() { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } }
-function saveProgress(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} }
+function loadLocal() { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } }
+function saveLocal(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} }
 
+// ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
+function AuthScreen() {
+    const [authMode, setAuthMode] = useState("login");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [needsConfirm, setNeedsConfirm] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+        if (authMode === "register") {
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) setError(error.message);
+            else if (!data.session) setNeedsConfirm(true);
+        } else {
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                setError(error.message === "Invalid login credentials"
+                    ? "Email o contraseña incorrectos"
+                    : error.message);
+            }
+        }
+        setLoading(false);
+    };
+
+    if (needsConfirm) {
+        return (
+            <div className="auth-wrap">
+                <div className="auth-card">
+                    <div className="auth-logo">FA</div>
+                    <div className="auth-title">Confirma tu email</div>
+                    <p className="auth-confirm">Hemos enviado un enlace de confirmación a <strong>{email}</strong>. Ábrelo y vuelve aquí para iniciar sesión.</p>
+                    <button onClick={() => { setNeedsConfirm(false); setAuthMode("login"); }} className="btn btn-gold btn-full btn-lg">Iniciar sesión</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="auth-wrap">
+            <div className="auth-card">
+                <div className="auth-logo">FA</div>
+                <div className="auth-title">FIFA Agent Exam</div>
+                <div className="auth-subtitle">Pocket Game</div>
+
+                <div className="auth-tabs">
+                    <button className={`auth-tab ${authMode==="login"?"auth-tab-active":""}`} onClick={() => { setAuthMode("login"); setError(""); }}>Iniciar sesión</button>
+                    <button className={`auth-tab ${authMode==="register"?"auth-tab-active":""}`} onClick={() => { setAuthMode("register"); setError(""); }}>Registrarse</button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="auth-form">
+                    <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} className="auth-input" required autoComplete="email" />
+                    <input type="password" placeholder="Contraseña (mín. 6 caracteres)" value={password} onChange={e => setPassword(e.target.value)} className="auth-input" required minLength={6} autoComplete={authMode==="login"?"current-password":"new-password"} />
+                    {error && <div className="auth-error">{error}</div>}
+                    <button type="submit" disabled={loading} className="btn btn-gold btn-full btn-lg">
+                        {loading ? "..." : authMode === "login" ? "Entrar" : "Crear cuenta"}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 function ProgressBar({ value, light }) {
     return (
         <div className={`progress-bar-track ${light ? "light" : ""}`}>
@@ -173,8 +241,15 @@ function Badge({ children, variant = "slate" }) {
     return <span className={`badge badge-${variant}`}>{children}</span>;
 }
 
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
-    const saved = loadProgress();
+    // ── Auth state
+    const [session, setSession] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const cloudLoadedRef = useRef(false);
+
+    // ── Game state (initialised from localStorage as fallback)
+    const saved = loadLocal();
     const categories = [...new Set(QUESTION_BANK.map(q => q.category))];
     const flashTopics = [...new Set(FLASHCARDS.map(c => c.topic))];
 
@@ -200,6 +275,60 @@ export default function App() {
     const [flashTimeLeft, setFlashTimeLeft] = useState(30);
     const [examReviewOpen, setExamReviewOpen] = useState(false);
 
+    // ── Auth init
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setAuthLoading(false);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
+
+    // ── Load cloud progress when session changes
+    useEffect(() => {
+        if (!session) return;
+        (async () => {
+            const { data } = await supabase
+                .from("user_progress")
+                .select("data")
+                .eq("user_id", session.user.id)
+                .single();
+            if (data?.data) {
+                const d = data.data;
+                if (d.wrongIds !== undefined) setWrongIds(d.wrongIds);
+                if (d.bestStreak !== undefined) setBestStreak(d.bestStreak);
+                if (d.points !== undefined) setPoints(d.points);
+                if (d.topicStats !== undefined) setTopicStats(d.topicStats);
+                if (d.savedAt !== undefined) setSavedAt(d.savedAt);
+            }
+            cloudLoadedRef.current = true;
+        })();
+    }, [session?.user?.id]);
+
+    // ── Save progress (local + cloud)
+    useEffect(() => {
+        if (!cloudLoadedRef.current) return;
+        const data = { wrongIds, bestStreak, points, topicStats, savedAt: new Date().toISOString() };
+        saveLocal(data);
+        setSavedAt(data.savedAt);
+        if (session) {
+            supabase.from("user_progress").upsert(
+                { user_id: session.user.id, data, updated_at: new Date().toISOString() },
+                { onConflict: "user_id" }
+            ).then();
+        }
+    }, [wrongIds, bestStreak, points, topicStats]);
+
+    const handleLogout = async () => {
+        cloudLoadedRef.current = false;
+        await supabase.auth.signOut();
+        setWrongIds([]); setBestStreak(0); setPoints(0); setTopicStats({}); setSavedAt(null);
+    };
+
+    // ── Quiz logic
     const baseQuestions = useMemo(() => {
         let src = QUESTION_BANK;
         if (sessionType === "wrong" && wrongIds.length > 0) src = src.filter(q => wrongIds.includes(q.id));
@@ -239,11 +368,6 @@ export default function App() {
         const t = setInterval(() => setFlashTimeLeft(s => s > 0 ? s - 1 : 0), 1000);
         return () => clearInterval(t);
     }, [mode, flashIndex, seed]);
-
-    useEffect(() => {
-        const data = { wrongIds, bestStreak, points, topicStats, savedAt: new Date().toISOString() };
-        saveProgress(data); setSavedAt(data.savedAt);
-    }, [wrongIds, bestStreak, points, topicStats]);
 
     useEffect(() => {
         if (mode === "flashcards" && flashTimeLeft <= 0 && flashcards.length > 0) {
@@ -290,15 +414,27 @@ export default function App() {
     const clearProgress = () => {
         setWrongIds([]); setBestStreak(0); setPoints(0); setSavedAt(null); setTopicStats({});
         localStorage.removeItem(STORAGE_KEY);
+        if (session) supabase.from("user_progress").delete().eq("user_id", session.user.id).then();
     };
 
     const reviewItems = questions.map(q => ({ ...q, wasCorrect: answers[q.id] }));
     const topicEntries = Object.entries(topicStats)
         .map(([topic, s]) => ({ topic, ...s, accuracy: s.total ? Math.round((s.correct/s.total)*100) : 0 }))
         .sort((a,b) => a.accuracy - b.accuracy || b.total - a.total);
-
     const pct = score && questions.length ? Math.round((score/questions.length)*100) : 0;
     const passed = pct >= 75;
+
+    // ── Render guards
+    if (authLoading) {
+        return (
+            <div className="auth-wrap">
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 14 }}>Cargando...</div>
+            </div>
+        );
+    }
+    if (!session) return <AuthScreen />;
+
+    const userHandle = session.user.email.split("@")[0];
 
     return (
         <div className="app-shell">
@@ -312,7 +448,13 @@ export default function App() {
                             <div className="top-bar-sub">Pocket Game · {QUESTION_BANK.length} preguntas</div>
                         </div>
                     </div>
-                    <div className="score-badge">{score}/{questions.length || "—"}</div>
+                    <div className="top-bar-right">
+                        <div className="score-badge">{score}/{questions.length || "—"}</div>
+                        <div className="top-bar-user">{userHandle}</div>
+                        <button onClick={handleLogout} className="logout-btn" title="Cerrar sesión">
+                            <LogOut size={15} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -355,14 +497,13 @@ export default function App() {
                     ))}
                 </div>
 
-                {/* ══ QUIZ MODE ══════════════════════════════════════════════ */}
+                {/* ══ QUIZ ═══════════════════════════════════════════════════ */}
                 {mode === "quiz" && (
                     <>
-                        {/* Mode selector */}
                         <div className="card">
                             <div className="card-body" style={{gap:10}}>
                                 <div className="mode-grid">
-                                    {[["normal","Modo normal",null],["timer","Contrarreloj 3 min",null],["mock","Simulacro 60 min",null]].map(([t,l]) => (
+                                    {[["normal","Modo normal"],["timer","Contrarreloj 3 min"],["mock","Simulacro 60 min"]].map(([t,l]) => (
                                         <button key={t} onClick={() => restart(t)} className={`mode-btn ${sessionType===t?"mode-btn-active":""}`}>{l}</button>
                                     ))}
                                     <button onClick={() => restart("exam")} className={`mode-btn ${sessionType==="exam"?"mode-btn-active":""}`}>
@@ -383,8 +524,8 @@ export default function App() {
                                         ))}
                                     </div>
                                 )}
-                                <div className="info-note" style={{color:"var(--slate-400)",fontSize:11}}>
-                                    {savedAt ? `Guardado: ${new Date(savedAt).toLocaleTimeString()}` : "El progreso se guarda automáticamente"}
+                                <div style={{color:"var(--slate-400)",fontSize:11,textAlign:"center"}}>
+                                    {savedAt ? `Guardado en la nube: ${new Date(savedAt).toLocaleTimeString()}` : "El progreso se guarda en la nube"}
                                 </div>
                             </div>
                         </div>
@@ -393,7 +534,6 @@ export default function App() {
                             <div className="card"><div className="card-body" style={{textAlign:"center",color:"var(--slate-400)"}}>No hay preguntas disponibles para este modo.</div></div>
                         )}
 
-                        {/* ── Normal / Timer / Mock / Wrong / Topic ── */}
                         {!finished && !!questions.length && sessionType !== "exam" && (
                             <div className="card">
                                 <div className="card-header">
@@ -440,7 +580,6 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* ── Exam Mode ── */}
                         {!finished && !!questions.length && sessionType === "exam" && (
                             <div className="exam-card">
                                 <div className="exam-header">
@@ -493,7 +632,6 @@ export default function App() {
                             </div>
                         )}
 
-                        {/* ── Results ── */}
                         {finished && !!questions.length && (
                             <div className="card">
                                 <div className="results-hero">
@@ -625,21 +763,17 @@ export default function App() {
                                     <span className="flashcard-meta">{flashIndex+1} / {flashcards.length}</span>
                                     <span className="flashcard-topic">{currentFlash.topic}</span>
                                 </div>
-
                                 <ProgressBar value={((flashIndex+1)/flashcards.length)*100} />
-
                                 <div className="flashcard-body" onClick={() => setFlashFlipped(v=>!v)}>
                                     <div className="flashcard-side-label">{flashFlipped ? "Respuesta" : "Pregunta"} — toca para girar</div>
                                     <div className={`flashcard-content ${flashFlipped?"answer":""}`}>
                                         {flashFlipped ? currentFlash.back : currentFlash.front}
                                     </div>
                                 </div>
-
                                 <div style={{padding:"0 20px 4px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                                     <span style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>Tiempo: {formatTime(flashTimeLeft)}</span>
                                     <ProgressBar value={(flashTimeLeft/30)*100} />
                                 </div>
-
                                 <div className="flashcard-footer">
                                     <button className="btn btn-ghost-white btn-sm" onClick={() => setFlashFlipped(v=>!v)}>{flashFlipped?"Ver pregunta":"Girar"}</button>
                                     <button className="btn btn-gold" onClick={() => { setFlashIndex(i=>(i+1)%flashcards.length); setFlashFlipped(false); setFlashTimeLeft(30); }}>
