@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -l /Users/juantxu/Desktop/fifa-agent-pocket-game-standard.zip)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(brew install:*)",
+      "Read(//private/tmp/**)",
+      "Bash(python3 -)",
+      "Bash(pip3 install:*)",
+      "Bash(pdftotext \"/Users/juantxu/Library/CloudStorage/OneDrive-GosuaFilmsSL/JUANTXU/AGENTE FIFA/2026/STUDY_MATERIALS/CURSO_FIFA/EXAMEN_RESUELTO.pdf\" -)",
+      "Bash(/opt/homebrew/bin/pdftotext \"/Users/juantxu/Library/CloudStorage/OneDrive-GosuaFilmsSL/JUANTXU/AGENTE FIFA/2026/STUDY_MATERIALS/CURSO_FIFA/EXAMEN_RESUELTO.pdf\" -)",
+      "Bash(/opt/homebrew/bin/pdftotext \"/Users/juantxu/Library/CloudStorage/OneDrive-GosuaFilmsSL/JUANTXU/AGENTE FIFA/2026/STUDY_MATERIALS/Preguntas de examen - 78 paginas.pdf\" -)",
+      "Bash(/opt/homebrew/bin/pdftotext -layout \"/Users/juantxu/Library/CloudStorage/OneDrive-GosuaFilmsSL/JUANTXU/AGENTE FIFA/2026/STUDY_MATERIALS/CURSO_FIFA/EXAMEN_RESUELTO.pdf\" /tmp/examen_resuelto.txt)",
+      "Read(//tmp/**)",
+      "Read(//usr/**)",
+      "Bash(python3 -c \"import pdfminer; print\\('pdfminer ok'\\)\")",
+      "Bash(python3 -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
+      "Bash(python3)",
+      "Bash(python3 -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
+      "Bash(gh auth:*)"
+    ]
+  }
+}
