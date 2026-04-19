@@ -20,7 +20,9 @@
       "Bash(python3 -c \"import fitz; print\\('pymupdf ok'\\)\")",
       "Bash(python3)",
       "Bash(python3 -c \"import pdfplumber; print\\('pdfplumber ok'\\)\")",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(node -e \"require\\('sharp'\\)\")",
+      "Bash(node generate-icons.js)"
     ]
   }
 }
